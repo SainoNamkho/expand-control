@@ -1,0 +1,501 @@
+\begingroup
+  \catcode`N=3\relax
+  \catcode`V=4\relax
+  %\catcode`E=5\relax
+  %\catcode`R=6\relax
+  \catcode`U=7\relax
+  \catcode`S=8\relax
+  \expandafter\gdef\csname @@@NEVERNEVERNEVERUSE\endcsname{NEVERUSE!}
+\endgroup
+
+\long\edef\@firstofone@NEVERUSE#1{#1\@@@NEVERNEVERNEVERUSE}
+\long\edef\@firstoftwo@NEVERUSE#1#2{#1\@@@NEVERNEVERNEVERUSE}
+\long\edef\@secondoftwo@NEVERUSE#1#2{#2\@@@NEVERNEVERNEVERUSE}
+
+\def\expand@two{\expandafter\expandafter\expandafter}
+\def\expand@three{\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter}
+
+\def\expand@four{%
+  \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter
+  \expandafter\expandafter\expandafter\expandafter\expandafter\expandafter\expandafter
+  \expandafter
+}
+
+\long\def\expandaftermany#1{%
+  \expanded{\unexpanded{#1}\expandafter}%
+}
+
+% Unless otherwise specified, all macros expand twice to the result.
+
+\def\generate@expandafter#1{%
+  \expanded{\expandafter\expand@four\expand@four\expandafter}%
+  \ifnum#1=0 % #1 must be put on the left side. If #1 is \numexpr, space is retained
+    \unexpanded{}\unexpanded{}\unexpanded{}%
+  \else
+    \expanded{\unexpanded{%
+      \expanded{\unexpanded{\generate@expandafter{\numexpr#1-1\relax}}\expand@two}%
+      \generate@expandafter{\numexpr#1-1\relax}\expandafter
+      }\expandafter}%  
+  \fi
+}
+% Test:
+% \def\p{\o}\def\o{\i}\def\i{u}
+% \message{\detokenize\expandafter\expandafter\expandafter{\generate@expandafter{1}\p}}
+
+
+% \noexpand behaves differently from \unexpanded
+% \unexpanded{...} -> ..., it prevents expansion once, when in \edef, it stops expansion of its content.
+%   In normal context \unexpanded{\p} will still expand \p.
+% \noexpand... -> <frozen dont expand>...,
+%   when <frozen dont expand> is read (not expand) from input again, the next token is tranlated to a token of same token value,
+%   but with a special char value (\relax+1) and command value of the one of \relax.
+%   Hence the token works like \relax, but if it is pushed back to input by token value, the former token is restored,
+%   which is the situation of \edef.
+%   When in \expandafter context, \noexpand stops expansion twice.
+%   
+% \iftrue\noexpand\fi\fi
+%   first \fi is \relax, so two \fi's
+% \detokenize\expandafter{\iftrue\noexpand\fi}\fi
+%   -> \detokenize{\noexpand\fi}\fi
+% \detokenize\expand@two{\iftrue\noexpand\fi}\fi
+%   -> \detokenize{<frozen dont expand>\fi}\fi
+%   when \detokenize scans the general text, it pushes back \fi.
+% \detokenize\expand@three{\iftrue\noexpand\fi}\fi
+%   -> \detokenize{\fi}\fi
+% \detokenize\expand@four{\iftrue\noexpand\fi}
+%   The fourth expansion ends \ifture's condition.
+% vs \iftrue\unexpanded{\fi}
+%   \unexpanded{\fi} expands to \fi, which terminates the condition.
+% \detokenize\expandafter{\iftrue\unexpanded{\fi}}\fi
+% -> \detokenize{\unexpanded{\fi}}\fi
+% \detokenize\expand@two{\iftrue\unexpanded{\fi}}\fi
+% -> \detokenize\expandafter{\unexpanded{\fi}}\fi
+% -> \detokenize{\fi}\fi
+% \detokenize\expand@three{\iftrue\unexpanded{\fi}}
+% -> The third expansion ends \ifture's condition.
+%   
+% *\message{\detokenize\expandafter{\expanded{\expandafter}\noexpand\noexpand\noexpand\p}}
+% \noexpand \noexpand \p
+% *\message{\detokenize\expandafter{\expanded{\expand@two}\noexpand\noexpand\noexpand\p}}
+% \noexpand \noexpand \p
+% *\message{\detokenize\expandafter{\expanded{\expand@three}\noexpand\noexpand\noexpand\p}}
+% \noexpand \p
+% *\message{\detokenize\expandafter{\expanded{\expand@four}\noexpand\noexpand\noexpand\p}}
+% \noexpand \p
+% *\message{\detokenize\expandafter{\expanded{\expand@three}\expanded{\expand@three}\noexpand\noexpand\noexpand\p}}
+% \p
+% *\message{\detokenize\expandafter{\expanded{\expand@three}\expanded{\expand@four}\noexpand\noexpand\noexpand\p}}
+% \p
+% *\message{\detokenize\expandafter{\expanded{\expand@four}\expanded{\expand@four}\noexpand\noexpand\noexpand\p}}
+% \o
+
+\def\expand@ntimes#1{%
+  \expanded{\expand@three}%
+  \expanded{\expand@three}%
+  \ifnum#1=0 %
+    \unexpanded{}\noexpand%
+  \else
+    \expanded{\unexpanded{\expand@ntimes{\numexpr#1-1\relax}}\expandafter}%
+  \fi
+}
+
+% \message{\detokenize\expandafter\expandafter\expandafter{\expand@ntimes{0}\p}}
+% \message{\detokenize\expandafter\expandafter\expandafter{\expand@ntimes{1}\p}}
+% \message{\detokenize\expandafter\expandafter\expandafter{\expand@ntimes{2}\p}}
+% \message{\detokenize\expandafter\expandafter\expandafter{\expand@ntimes{3}\p}}
+
+\expandafter\let\expandafter\char@generate\csname char_generate:nn\endcsname
+
+% #1 is full string.
+\long\def\trim@one@left#1{\romannumeral`\^^@\noexpand#1}
+
+% No care of right braces.
+\long\def\full@expand@one@notrim#1{%
+  \expanded{\expand@three}%
+  \expanded{\expand@three}%
+  \if@startswithexpandable{#1}{\expandafter\full@expand@one@notrim\expandafter{#1}}{\unexpanded{}#1}%
+}
+
+% Test:
+% \if@startswithspace{0}{ x}{\show Y}{\show N}
+% \if@startswithspace{0}{\space x}{\show Y}{\show N}
+% \if@startswithspace{1}{\ifnum0=`{\fi x}}{\show Y}{\show N}
+% \if@startswithspace{1}{\ifnum0=`{\fi\space x}}{\show Y}{\show N}
+\long\def\if@startswithspace#1#2{%
+  \expanded{\expand@three}%
+  \ifnum\pdfstrcmp{\detokenize\expand@three{\expanded{\unexpanded{\pseudo@brace{#1}}\expandafter}\romannumeral`\^^@#2}}{\detokenize{#2}}=0 %
+    \expandafter\@secondoftwo
+  \else
+    \expandafter\@firstoftwo
+  \fi
+}
+
+% Test:
+% \if@startswithlbrace{0}{x}{\show Y}{\show N}
+% \if@startswithlbrace{0}{{x}}{\show Y}{\show N}
+% \if@startswithlbrace{1}{\ifnum0=`{\fi x}}{\show Y}{\show N}
+% \if@startswithlbrace{1}{\ifnum0=`{\fi{x}}}{\show Y}{\show N}
+\long\def\if@startswithlbrace#1#2{%
+  \expanded{\expand@three}%
+  \ifnum\pdfstrcmp{\detokenize{#2.}}
+                  {\detokenize\expand@three{%
+                    \expanded{\unexpanded{\pseudo@brace{#1}}\expand@two}\expandafter\@firstofone\expanded{\expand@two}\expand@ntimes{#1}#2.}}=0 %
+    \expandafter\@secondoftwo
+  \else
+    \expandafter\@firstoftwo
+  \fi
+}
+
+% Now the implementation doesn't need expandability test.
+\long\def\if@startswithexpandable#1{%
+  \expanded{\expand@three}%
+  \ifnum\pdfstrcmp{\detokenize\expandater{#1}}{\detokenize{#1}}=0 %
+    \expandafter\@secondoftwo
+  \else
+    \expandafter\@firstoftwo
+  \fi
+}
+
+% Expand once
+% Now the implementation don't care balance here.
+% `#1NEVERUSE!`, #1 must be balanced.
+\@firstofone@NEVERUSE{\long\def\ignore@to@NEVERUSE#1}{}
+
+\@firstofone@NEVERUSE{\long\def\ignore@then@firstoftwo#1}#2#3{#2}
+\@firstofone@NEVERUSE{\long\def\ignore@then@secondoftwo#1}#2#3{#3}
+
+\long\def\@firstofthree#1#2#3{#1}
+\long\def\@secondofthree#1#2#3{#2}
+% End expand once
+
+% Syntax:
+% \if@startswithrbrace{1}{ {abc}}}
+% Test:
+% \if@startswithrbrace{1}{{abc}}}{\show Y}{\show N}
+% \expanded{\unexpanded{\if@startswithrbrace{1}}{\ifnum0=`{\fi }{abc}}}{\show Y}{\show N}
+% \expanded{\unexpanded{\if@startswithrbrace{1}}{\ifnum0=`{\fi {abc}d}}}{\show Y}{\show N}
+% \expanded{\unexpanded{\if@startswithrbrace{1}}\expand@three}\expand@two{\expand@ntimes{1}\ifnum0=`{\fi }{abc}d}{\show Y}{\show N}
+% \expanded{\unexpanded{\if@startswithrbrace{1}}\expand@three}\expand@two{\expand@ntimes{1}\ifnum0=`{\fi {abc}d}}{\show Y}{\show N}
+% \expanded{\unexpanded{\if@startswithrbrace{1}}\expand@three}\expand@two{\expand@ntimes{1}\ifnum0=`{\fi }}{\show Y}{\show N}
+\long\def\if@startswithrbrace#1#2{%
+  \expanded{\expand@four}%
+  \if\relax\detokenize{#2}\relax
+    \expanded{\unexpanded{\expandafter\@secondofthree\expandafter{\expanded{\expand@two}\pseudo@brace{#1}}}\expandafter}%
+  \else
+    \expanded{\unexpanded{\expandafter\@thirdofthree\expandafter{\expanded{\expand@two}\pseudo@brace{#1}}}\expandafter}%
+  \fi
+}
+
+% \message{\detokenize\expandafter{\expanded{\unexpanded\expandafter{\ifnum0=`}\fi}}}}
+% \message{\detokenize\expandafter{\iffalse}\fi}}
+%
+% \message{\detokenize\expandafter{\expanded{\noexpand\ifnum0=`{\noexpand\fi\ifnum0=`}\fi}}}}
+% -> \message{,\detokenize{, \ifnum0=`{\fi,},}}
+% -> \ifnum 0=`{\fi }
+%
+% % Handling of braces of \message is a little distinct from the one of \detokenize, 
+% % eTeX's primitves use a scan_general_text procedure to get <general text>,
+% % which works like TeX's scan_toks(false, false), 
+% % but \message usese scan_toks(false, true)
+% %   the first false means it's not scanning braced code for a definition,
+% %   the second true means code is expanded whil being scanned.
+% % \expanded: scan_pdf_ext_toks -> scan_toks(false,true), so same as \message
+% \message{\detokenize\expandafter{\iffalse{\fi}\p}
+% \detokenize\expandafter{\iffalse{\fi}\p
+
+
+% Prerequisite:
+% 1. #1 itself must be balanced as an arugment
+% 2. #1's full expansion is also balanced as it's used in the \edef in \MakeUppercase
+\long\def\PreserveCase#1{%
+  \unexpanded\expand@two{\handle@brace{0}{#1}}%
+}
+
+\def\pseudo@brace#1{%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{\pseudo@brace@auxi{#1}\unexpanded{}}\expand@two}%
+  \pseudo@brace@auxii{#1}%
+}
+
+\def\pseudo@brace@auxi#1{%
+  \expanded{\expand@four}%
+  \ifnum#1=0 %
+    \noexpand
+  \else
+    \expanded{\unexpanded{\pseudo@brace@auxi{\numexpr#1-1\relax}\expanded{\expand@two}}\expandafter}%
+  \fi
+}
+
+\def\pseudo@brace@auxii#1{%
+  \expanded{\expand@three}%
+  \expanded{\expand@three}%
+  \ifnum#1=0 %
+    \unexpanded{}\noexpand
+  \else
+    \expanded{\unexpanded{%
+      \expanded{\unexpanded{%
+        \pseudo@brace@auxii{\numexpr#1-1\relax}%
+      }\expandafter}%
+      \expandafter\ifnum\expandafter0\expandafter=\expandafter`\expandafter{\expandafter\fi\ifnum0=`}\fi
+    }\expandafter}%
+  \fi
+}
+
+% V0.3 Note
+% String now expanded by \expand@ntimes instead of \expanded
+% in case it's not balanced.
+% % V0.2 Note
+% % The string is now already fully expanded.
+% % So it is safe to fully expand the braces in one pass.
+% % No need of keeping the expansion of removing braces in two times.
+\let\pseudo@brace=\pseudo@brace@auxii
+
+
+% Now use a number of level to generate braces.
+% 
+% % Note for previous version:
+% % Assume [] to have catcode 1, 2
+% % #1: \expanded{\noexpand\expanded{\noexpand\expand@two}\expandafter}*2
+% %     \expandafter\ifnum\expandafter0\expandafter=\expandafter`\expandafter{\expandafter\fi*3
+% %     \expanded{\expand@two}*2
+% %     \ifnum0=`}\fi*3
+% % \expanded{#1} \ifnum0=`{\fi\ifnum0=`{\fi\ifnum0=`{\fi
+% % #1 expand -> #2's prefix
+% % #2: \expanded{\expand@two}*3 \unexpanded{}
+% %     \ifnum0=`{\fi*3
+% %     a]]]bcd
+% % #2 expand -> a]]]bcd
+% % if #2: \ifnum0=`{\fi\ifnum0=`{\fi\ifnum0=`{\fi [a]]]]bcd
+% % new #1 -> \noexpand\ifnum0=`{\noexpand\fi#1\ifnum0=`}\fi
+% % if #2: \ifnum0=`{\fi\ifnum0=`{\fi\ifnum0=`{\fi ]]]bcd
+% % new #1 -> once expansion of #1
+% 
+% Note that\ifnum0=`}\fi needs one expansion but \ifnum0=`\^^@\fi needs two,
+% evaluation resulting in false with continue to scan the \else and \fi
+% 
+% Expands to a piece of the final string and \handle@...{new #1}{new #2}
+% \handle@... functions aren't defined in delimited form, 
+%   to avoid extra concern that a pair of braces are stripped off when #2 ends with right brace.
+
+% Not real code, expandsion control needed.
+\long\def\handle@brace#1#2{%
+  \if@startswithrbrace{#1}{#2}
+  {%
+    \chew@char{\numexpr#1-1\relax}{2}\string#2\@@@NEVERNEVERNEVERUSE
+    \handle@brace{\the\numexpr#1-1\relax}{\pseudo@brace{\numexpr#1-1\relax}\@gobble\string#2}%
+  }{%
+    \if@startswithlbrace{#1}{#2}%
+    {%
+      \chew@char{\numexpr#1+1\relax}{1}\string#2\@@@NEVERNEVERNEVERUSE
+      \handle@brace{\the\numexpr#1+1\relax}{\pseudo@brace{\numexpr#1+1\relax}\@gobble\string#2}%
+    }{%
+      \if@startswithspace{#1}{#2}%
+      {%
+        \chew@char{#1}{10}\string#2\@@@NEVERNEVERNEVERUSE
+        \handle@brace{#1}{\pseudo@brace{#1}\@gobble\string#2}%
+      }{%
+        \chew@cs{#1}#2\@@@NEVERNEVERNEVERUSE
+        \handle@brace{#1}{\pseudo@brace{#1}\@gobble#2}%
+      }%
+    }%
+  }%
+}
+
+\chardef\space@cat=10\relax
+
+\long\def\handle@brace#1#2{%
+  \expanded{\expand@three}%
+  \if\relax\detokenize{#2}\relax
+    \unexpanded{}%
+  \else
+          \expanded{\unexpanded{%
+    \expanded{\expand@four}%
+    \expanded{\unexpanded{\if@startswithrbrace{#1}}\expand@three}\expand@two{\expand@ntimes{#1}#2}%
+    {%
+      \expanded{\expand@three}%
+      \expanded{\unexpanded\expandafter{\expandafter\chew@char\expandafter{\the\numexpr#1-1\relax}{2}}\expand@two}%
+      \expandafter\string\expanded{\expand@three}\ifnum0=`{\fi\expand@ntimes{#1}#2}%
+    }{%
+      \expanded{\expand@three}%
+      \if@startswithspace{#1}{#2}%
+      {%
+        \expanded{\expand@three}%
+        \expanded{\unexpanded{\chew@space{#1}{\space@cat}}{\get@spacecharcode{#1}{#2}}\expand@two}%
+        \expandafter\romannumeral\expandafter`\expandafter\^^@\expanded{\expand@three}\ifnum0=`{\fi\expand@ntimes{#1}#2}%
+      }{%
+        \expanded{\expand@three}%
+        \if@startswithlbrace{#1}{#2}%
+        {%
+          \expanded{\expand@three}%
+          \expanded{\unexpanded\expandafter{\expandafter\chew@char\expandafter{\the\numexpr#1+1\relax}{1}}\expand@two}%
+          \expandafter\string\expanded{\expand@three}\ifnum0=`{\fi\expand@ntimes{#1}#2}%
+        }{%
+          \expanded{\expand@three}%
+          \expanded{\unexpanded{\chew@cs{#1}}\expand@three}%
+          \ifnum0=`{\fi\expand@ntimes{#1}#2}%
+        }%
+      }%
+    }%
+          }\expandafter}%
+  \fi
+}
+
+% #1: \chew@..., #2: old level, #3: new level, #4: catcode or empty, #5: \chew@...'s token getter, #6: string.
+\def\pass@args#1#2#3#4#5#6{%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{#1{#3}#4}\expand@two}%
+  \expandafter\string\expanded{\expand@three}%
+  \expanded{\unexpanded{\expand@ntimes{#2}#6}\expand@two}\expandafter\@@@NEVERNEVERNEVERUSE
+  \expanded{\unexpanded{\handle@brace{#3}}\expandafter}%
+  \expandafter{%
+    \expanded{\expand@two}%
+    \expanded{\unexpanded{%
+      \expanded{\expand@three}%
+      \expanded{\unexpanded{\pseudo@brace{#3}}\expand@two}\expandafter\@gobble\string
+    }\expand@two}\expand@ntimes{#2}#6%
+  }%
+}
+% Test:
+% \def\q#1{%
+%   \expanded{\expand@four}%
+%   \expand@two\ignore@to@NEVERUSE\pseudo@brace{#1}%
+% }
+% 
+% \message{\detokenize\expand@three{%
+% \expanded{\unexpanded{\q{\numexpr2+1\relax}{1}}\expand@two}%
+% \expandafter\string\expanded{\expand@three}%
+% \expanded{\unexpanded{\expand@ntimes{2}\ifnum0=`{\fi\ifnum0=`{\fi{x}bc}}}\expand@two}\expandafter\@@@NEVERNEVERNEVERUSE
+% \expanded{\unexpanded{\handle@brace{3}}\expandafter}%
+% \expandafter{%
+%   \expanded{\expand@two}%
+%   \expanded{\unexpanded{%
+%     \expanded{\expand@three}%
+%     \expanded{\unexpanded{\pseudo@brace{3}}\expand@two}\expandafter\@gobble\string
+%   }\expand@two}\expand@ntimes{2}\ifnum0=`{\fi\ifnum0=`{\fi{x}bc}}%
+% }%
+% }}
+% 
+% \message{\detokenize\expand@two{\pass@args{\q}{2}{3}{1}{\ifnum0=`{\fi\ifnum0=`{\fi{x}bc}}} }}
+
+
+%\def\caret{^}
+%\edef\hextochar#1{\noexpand\scantokens{\caret\caret#1\noexpand\noexpand}}
+
+% \chew@... functions also expands the next handler.
+% Not delimited, #3 may be unbalanced.
+% #1: new level #2: category code, #3: the token
+\def\chew@char#1#2#3{%
+  % Add \expanded{\unexpanded{\char@generate{\number`#3}{#2}}\expand@three} to result.
+  \expanded{%
+    \noexpand\expanded{\noexpand\unexpanded{\noexpand\char@generate{\number`#3}{#2}}\noexpand\expand@three}%
+  \expandafter}%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{\handle@brace{#1}}\expandafter}\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{#1}%
+}
+
+% #3: character code
+\def\chew@space#1#2#3{%
+  % Add \expanded{\unexpanded{\char@generate{\number`#3}{#2}}\expand@three} to result.
+  \expanded{%
+    \noexpand\expanded{\noexpand\unexpanded{\noexpand\char@generate{#3}{#2}}\noexpand\expand@three}%
+  \expandafter}%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{\handle@brace{#1}}\expandafter}\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{#1}%
+}
+
+\long\def\chew@cs#1#2{%
+  \expanded{\expand@three}%
+  \ifcat#2\relax
+    \expanded{\unexpanded{%
+      % Add \expandafter#2 to result.
+      \expanded{\unexpanded{\expandafter#2}\expandafter}%
+      \expanded{\expand@three}%
+      \expanded{\unexpanded{\handle@brace{#1}}\expandafter}\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{#1}%
+    }\expandafter}%
+  \else
+    \expanded{\expand@two}%
+    \expanded{\noexpand\chew@char{#1}{\the\catcode`#2}{#2}\expandafter}%
+  \fi
+}
+
+% Test:
+% \begingroup
+% \let\:=\fi
+% \catcode`\&=10
+% \message{\detokenize\expand@two{\get@spacecharcode{1}{\ifnum0=`{\: 1} }}
+% 32
+% \message{\detokenize\expand@two{\get@spacecharcode{1}{\ifnum0=`{\:&1}} }}
+% 32
+% \message{\detokenize\expand@two{\get@spacecharcode{0}{ 1} }}
+% 32
+% \message{\detokenize\expand@three{\expanded{\unexpanded{\get@spacecharcode{0}}\expandafter}\expandafter{\expanded{\expand@two}\char@generate{65}{10}1} }}
+% 65
+% \endgroup
+\long\def\get@spacecharcode#1#2{%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{\get@prefix{#1}{}}\expand@two}%
+  \expanded{\unexpanded{\expandafter{%
+    \expanded{\expand@three}\expanded{\unexpanded{\pseudo@brace{#1}}\expand@two}%
+    \expandafter\number\expandafter`\expanded{\expand@two}\expand@ntimes{#1}#2%
+  }}\expandafter}%
+  \expandafter{\expanded{\expand@three}\expanded{\unexpanded{\pseudo@brace{#1}}\expandafter}\romannumeral`\^^@#2}%
+}
+% Test:
+% *\message{\detokenize\expand@two{\get@prefix{0}{xs}{1}{1} }}
+% xs
+% *\message{\detokenize\expand@two{\get@prefix{0}{xs}{21}{1} }}
+% xs2
+% *\message{\detokenize\expand@two{\get@prefix{1}{xs}{\ifnum0=`{\fi 23}}{\ifnum0=`{\fi }} }}
+% xs23
+% #1: level, #2: prefix, #3: string, #4: substring
+\long\def\get@prefix#1#2#3#4{%
+  \expanded{\expand@three}%
+  \ifnum\pdfstrcmp{\detokenize{#3}}{\detokenize{#4}}=0 %
+    \unexpanded{}\expanded{\unexpanded{#2}\expandafter}%
+  \else
+    % Old version:
+    % \expanded{\expand@three}%
+    % \expanded{\expand@three}%
+    % \expanded{\unexpanded{\expandafter\@firstofone\@rotatethreeleft@braced}\expand@three}%
+    % \expanded{\unexpanded{\expandafter\expandafter\@rotatethreeleft@braced}\expand@two}%
+    % \expanded{\expand@two}\expandafter\expandafter\@rotatethreeleft@braced
+    % {\get@prefix{#1}}%
+    % {\expanded{\unexpanded{#2}\expand@two}\get@car{#3}}%
+    % {\expanded{\expand@two}\get@cdr{#3}}{#4}%
+    \expanded{\unexpanded{%
+      \expanded{\expand@three}%
+      \expanded{\unexpanded{\get@prefix{#1}}\expand@two}%
+      \expanded{\unexpanded{\expandafter{\expanded{\unexpanded{#2}\expand@two}\get@car{#1}{#3}}}\expandafter}%
+      \expandafter{\expanded{\expand@two}\get@cdr{#1}{#3}}{#4}%
+    }\expandafter}%
+  \fi  
+}
+
+
+
+
+
+% \@rotatethreeleft{\expandafter\@gobble\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{1}}\expand@two ab}cd}
+% -> \expand@two a\expandafter\@gobble\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{1}b}cd}
+% -> \expandafter\expandafter\expandafter a\expandafter\@gobble\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{2}b}cd}
+% -> \expandafter a\@gobble{\ifnum0=`{\fi b}cd}
+% -> a
+\long\def\get@car#1#2{%
+  \expanded{\expand@three}%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{%
+    \@rotatethreeleft{\expandafter\@gobble\expandafter{\expanded{\expand@three}\ifnum0=`}\fi\pseudo@brace{#1}}\expand@two%
+  }\expand@three}\ifnum0=`{\fi\expand@ntimes{#1}#2}%
+}
+% Test:
+% \message{\detokenize\expand@two{\get@car{1}{\ifnum0=`{\fi ab}c} }}
+% \message{\detokenize\expand@two{\get@car{0}{abc} }}
+
+\long\def\@rotatethreeleft#1#2#3{#2#3#1}
+\long\def\@rotatethreeleft@braced#1#2#3{{#2}{#3}{#1}}
+
+\long\def\get@cdr#1#2{%
+  \expanded{\expand@three}%
+  \expanded{\unexpanded{\pseudo@brace{#1}}\expand@two}\expandafter\@gobble\expanded{\expand@two}\expand@ntimes{#1}#2%
+}
+\endinput

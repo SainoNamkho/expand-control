@@ -1,0 +1,32 @@
+\documentclass{article}
+\usepackage{expand-control}
+\begin{document}
+\makeatletter
+
+\errorcontextlines=5
+\tracingmacros=1
+\edef\ak{\uppercase{abc\PreserveCase{ }def}}\show\ak
+\tracingmacros=0\relax
+\MakeUppercase{abc\PreserveCase{aABb}def}
+
+
+\message{\detokenize\expandafter{%
+  \expanded{\expand@three}\expanded{\unexpanded{\char@generate{97}{12}}\expand@three}%
+  \expanded{\unexpanded{\char@generate{97}{10}}\expand@three}%
+  % \expanded{\noexpand\@gobble\expand@three}%
+  \expanded{\unexpanded{\char@generate{65}{1}}\expand@three}%
+  \expanded{\unexpanded{\char@generate{65}{2}}\expand@three}%
+}}
+
+\edef\a{\uppercase{%
+  \unexpanded{\expanded{\unexpanded{\char@generate{97}{12}}\expand@three}%
+  \expanded{\unexpanded{\char@generate{97}{10}}\expand@three}%
+  % \expanded{\noexpand\@gobble\expand@three}%
+  \expanded{\unexpanded{\char@generate{65}{1}}\expand@three}%
+  \expanded{\unexpanded{\char@generate{65}{2}}\expand@three}%
+  }%
+}}\show\a
+
+\edef\a{\unexpanded{\char@generate{97}{12}}}\show\a
+
+\end{document}
